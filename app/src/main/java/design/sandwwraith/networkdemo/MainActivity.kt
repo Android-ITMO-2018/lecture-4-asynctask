@@ -11,12 +11,13 @@ import android.view.MenuItem
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
 import java.io.BufferedReader
+import java.lang.ref.WeakReference
 import java.net.HttpURLConnection
 import java.net.URL
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var downloadTask: DownloadPostsAsyncTask
+    private lateinit var downloadTask: DownloadPostsAsyncTask
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,7 +25,7 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
 
         fab.setOnClickListener {
-            downloadTask = DownloadPostsAsyncTask()
+            downloadTask = DownloadPostsAsyncTask(WeakReference(this))
             downloadTask.execute(URL("https://jsonplaceholder.typicode.com/posts/1"))
         }
 
@@ -33,30 +34,34 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    inner class DownloadPostsAsyncTask: AsyncTask<URL, Int, String>() {
+    private class DownloadPostsAsyncTask(val activity: WeakReference<MainActivity>): AsyncTask<URL, Int, String>() {
         override fun onPreExecute() {
             Log.d(logTag, "onPreExecute: ${Thread.currentThread().name}")
         }
 
         override fun onProgressUpdate(vararg values: Int?) {
-            text_view.text = getString(R.string.progress_message, values[0])
+            activity.get()?.let {
+                it.text_view.text = it.getString(R.string.progress_message, values[0])
+            }
         }
 
         override fun onPostExecute(result: String?) {
             Log.d(logTag, "onPostExecute: ${Thread.currentThread().name}")
-            text_view.text = getString(R.string.result_message, result)
+            activity.get()?.let {
+                it.text_view.text = it.getString(R.string.result_message, result)
+            }
         }
 
         private val logTag = "ASYNC_TASK"
 
         override fun onCancelled(result: String?) {
             Log.d(logTag, "Cancelled with result: $result")
-            text_view.text = "Cancelled"
+            activity.get()?.text_view?.text = "Cancelled"
         }
 
         override fun onCancelled() {
             Log.d(logTag, "Cancelled without result")
-            text_view.text = "Cancelled"
+            activity.get()?.text_view?.text = "Cancelled"
         }
 
         override fun doInBackground(vararg params: URL): String {
